@@ -1,0 +1,26 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# RFMpackage
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of RFMpackage is to calculate weighted RFM scores based on recency, frequency and monetary values of customer purchases and sort customers to groups
+
+## Installation
+
+You can install the released version of RFMpackage from github
+

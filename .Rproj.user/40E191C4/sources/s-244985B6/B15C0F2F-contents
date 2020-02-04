@@ -1,0 +1,7 @@
+library(data.table)
+library(lubridate)
+library(Hmisc)
+library(RFMpackage)
+data <- fread("transactions.csv")
+data[, TransDate:=dmy(TransDate, tz="UTC")]
+RFM <- RFMfunction(transactions, 60,20,20)

@@ -1,0 +1,11 @@
+Package: RFMpackage
+Type: Package
+Title: Calculate RFM scores
+Version: 0.1.0
+Author: Me
+Maintainer: The package maintainer <marat.sharipov@uzh.ch>
+Description: Calculates RFM scores from customer data
+License: 
+Depends: R (>=3.0.1), data.table, lubridate, Hmisc
+Encoding: UTF-8
+LazyData: true

@@ -1,0 +1,144 @@
+# Part 1: Setup R and start preparing your data ####
+# ------------------------------------------------------------------------------
+
+# Set working directory ####
+setwd("")
+
+# Install and load packages
+# install.packages("data.table")
+# install.packages("lubridate")
+# install.packages("Hmisc")
+library(data.table)
+library(lubridate)
+library(Hmisc)
+
+#Read in the data transactions.csv. ####
+transactions <- fread("data/transactions.csv")
+
+# Change dates
+transactions[, TransDate:=dmy(TransDate, tz="UTC")]
+
+# Check the data
+head(transactions)
+str(transactions)
+summary(transactions)
+
+
+
+# Part 2: Aggregation of variables ####
+# ------------------------------------------------------------------------------
+
+#Save the latest transaction as the object now in your R environment. ####
+max.Date <- max(transactions[, TransDate])
+
+#Create a new data.table called rfm. ####
+#that includes the customer ID, as well as the measures for purchase recency, frequency and monetary value.
+rfm <- transactions[,list(
+    recency = as.numeric(difftime(max.Date,max(TransDate), units = "days")), #recency = difference between latest transaction and "today"
+    frequency = .N, #frequency = number of transactions
+    monetary = mean(PurchAmount)), #monetary = amount spent per transaction
+    by="Customer"
+  ]
+
+#Check the structure of the new table and ensure that all the variables are numeric. ####
+str(rfm)
+
+
+
+# Part 3: Calculation of RFM Scores ####
+# ------------------------------------------------------------------------------
+
+# Define scores from 1 to 3 for each of the previously specified measures.
+# (Hint: Consider using the cut2() command.)
+
+#Use the cut2() function  ####
+#in order to transform recency, frequency, and monetary value into scores from 1 to 3.
+rfm_scores <- rfm[,list(Customer,
+                        recency = as.numeric(cut2(-recency, g=3)),
+                        frequency = as.numeric(cut2(frequency, g=3)),
+                        monetary = as.numeric(cut2(monetary, g=3))
+)]
+
+
+
+# Part 4: The overall RFM score ####
+# ------------------------------------------------------------------------------
+
+#Calculate the unweighted overall score for all customers, i.w. R 33.33%, F 33.33%, M 33.33%.
+#Calculate a weighted overall score which weighs frequency more heavily, i.e. R 20%, F 60%, M 20%.
+#Calculate a weighted overall score which weighs recency more heavily, i.e. R 60%, F 20%, M 20%.
+
+#Calculation of overall RFM scores ####
+rfm_scores[,overall:=mean(c(recency, frequency, monetary)),by=Customer] #unweighted RFM score
+
+rfm_scores[,weighted1:=(0.2*recency + 0.6*frequency + 0.2*monetary), by=Customer] #weighted RFM score (frequency)
+
+rfm_scores[,weighted2:=(0.6*recency + 0.2*frequency + 0.2*monetary), by=Customer] #weighted RFM score (recency)
+
+#Divide all customers in 3 distinct RFM groups by rounding the overall RFM score. ####
+#Do this for all the three RFM scores, you previously calculated.
+rfm_groups <- rfm_scores[,list(
+  Customer,
+  group_overall=round(overall),
+  group_weighted1=round(weighted1),
+  group_weighted2=round(weighted2))]
+
+#Get best customers
+rfm_scores[overall == max(overall),]
+
+
+
+# Part 5: The RFM function ####
+# ------------------------------------------------------------------------------
+
+RFMfunction <- function(data, 
+                        weight_recency=1, 
+                        weight_frequency=1, 
+                        weight_monetary=1){
+
+  # Load libraries with require()
+  require(data.table)
+  require(lubridate)
+  require(Hmisc)
+
+  # Ensure that the weights add up to one
+  weight_recency2 <- weight_recency/sum(weight_recency, 
+                                        weight_frequency, weight_monetary)
+  weight_frequency2 <- weight_frequency/sum(weight_recency, 
+                                            weight_frequency, weight_monetary)
+  weight_monetary2 <- weight_monetary/sum(weight_recency, 
+                                          weight_frequency, weight_monetary)
+
+  # RFM measures
+  max.Date <- max(data$TransDate)
+  temp <- data[,list(
+    recency = as.numeric(max.Date - max(TransDate)),
+    frequency = .N,
+    monetary = sum(PurchAmount)/.N),
+    by="Customer"
+    ]
+
+  # RFM scores
+  temp <- temp[,list(Customer,
+    recency = as.numeric(cut2(-recency, g=3)),
+    frequency = as.numeric(cut2(frequency, g=3)),
+    monetary = as.numeric(cut2(monetary, g=3)))]
+
+  # Overall RFM score
+  temp[,finalscore:=weight_recency2*recency+
+         weight_frequency2*frequency+
+         weight_monetary2*monetary, 
+       by=Customer]
+
+  # RFM group
+  temp[,group:=round(finalscore)]
+
+  # Return final table
+  return(temp)
+}
+
+data_with_RFM_scores <- RFMfunction(data=transactions,
+                                    weight_recency=60,
+                                    weight_frequency=20,
+                                    weight_monetary=20)
+data_with_RFM_scores
